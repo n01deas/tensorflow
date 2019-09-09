@@ -17,7 +17,6 @@ limitations under the License.
 #include "tensorflow/contrib/cloud/kernels/bigquery_table_accessor_test_data.h"
 #include "tensorflow/core/example/feature.pb.h"
 #include "tensorflow/core/lib/core/status_test_util.h"
-#include "tensorflow/core/lib/gtl/stl_util.h"
 #include "tensorflow/core/lib/strings/str_util.h"
 #include "tensorflow/core/platform/cloud/http_request_fake.h"
 #include "tensorflow/core/platform/test.h"
@@ -30,7 +29,7 @@ constexpr char kTestDataset[] = "test-dataset";
 constexpr char kTestTable[] = "test-table";
 
 bool HasSubstr(StringPiece base, StringPiece substr) {
-  bool ok = str_util::StrContains(base, substr);
+  bool ok = absl::StrContains(base, substr);
   EXPECT_TRUE(ok) << base << ", expected substring " << substr;
   return ok;
 }
@@ -46,8 +45,8 @@ class FakeAuthProvider : public AuthProvider {
 string DeterministicSerialization(const tensorflow::Example& example) {
   const std::size_t size = example.ByteSizeLong();
   string result(size, '\0');
-  ::tensorflow::protobuf::io::ArrayOutputStream array_stream(
-      gtl::string_as_array(&result), size);
+  ::tensorflow::protobuf::io::ArrayOutputStream array_stream(&*result.begin(),
+                                                             size);
   ::tensorflow::protobuf::io::CodedOutputStream output_stream(&array_stream);
 
   output_stream.SetSerializationDeterministic(true);

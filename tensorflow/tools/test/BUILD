@@ -1,16 +1,16 @@
 # Description:
 # Tools for testing
 
-package(default_visibility = ["//tensorflow:internal"])
-
 load(
     "//tensorflow/tools/test:performance.bzl",
     "tf_cc_logged_benchmark",
     "tf_py_logged_benchmark",
 )
-load("//tensorflow:tensorflow.bzl", "py_test")
 
-licenses(["notice"])  # Apache 2.0
+package(
+    default_visibility = ["//tensorflow:internal"],
+    licenses = ["notice"],  # Apache 2.0
+)
 
 exports_files(["LICENSE"])
 
@@ -32,6 +32,7 @@ py_library(
 py_binary(
     name = "system_info",
     srcs = ["system_info.py"],
+    python_version = "PY2",
     srcs_version = "PY2AND3",
     deps = [
         ":system_info_lib",
@@ -55,6 +56,7 @@ py_library(
 py_binary(
     name = "run_and_gather_logs",
     srcs = ["run_and_gather_logs.py"],
+    python_version = "PY2",
     srcs_version = "PY2AND3",
     visibility = ["//visibility:public"],
     deps = [":run_and_gather_logs_main_lib"],
@@ -99,4 +101,9 @@ tf_cc_logged_benchmark(
 tf_py_logged_benchmark(
     name = "rnn_op_benchmark",
     target = "//tensorflow/python/kernel_tests:rnn_test",
+)
+
+tf_py_logged_benchmark(
+    name = "sparse_csr_matrix_ops_benchmark",
+    target = "//tensorflow/python/kernel_tests:sparse_csr_matrix_ops_test_py",
 )

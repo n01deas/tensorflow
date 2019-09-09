@@ -2,20 +2,19 @@
 #   TensorFlow camera demo app for Android.
 
 load("@build_bazel_rules_android//android:rules.bzl", "android_binary")
-
-package(default_visibility = ["//visibility:public"])
-
-licenses(["notice"])  # Apache 2.0
-
 load(
     "//tensorflow:tensorflow.bzl",
     "tf_copts",
-    "tf_opts_nortti_if_android",
+)
+
+package(
+    default_visibility = ["//visibility:public"],
+    licenses = ["notice"],  # Apache 2.0
 )
 
 exports_files(["LICENSE"])
 
-LINKER_SCRIPT = "//tensorflow/contrib/android:jni/version_script.lds"
+LINKER_SCRIPT = "jni/version_script.lds"
 
 # libtensorflow_demo.so contains the native code for image colorspace conversion
 # and object tracking used by the demo. It does not require TF as a dependency
@@ -67,7 +66,7 @@ android_binary(
     srcs = glob([
         "src/**/*.java",
     ]),
-    aapt_version = "aapt",
+    aapt_version = "aapt2",
     # Package assets from assets dir as well as all model targets. Remove undesired models
     # (and corresponding Activities in source) to reduce APK size.
     assets = [
@@ -119,4 +118,6 @@ filegroup(
     srcs = glob(["res/**"]),
 )
 
-exports_files(["AndroidManifest.xml"])
+exports_files([
+    "AndroidManifest.xml",
+])

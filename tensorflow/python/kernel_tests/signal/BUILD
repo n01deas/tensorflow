@@ -1,11 +1,12 @@
-package(default_visibility = ["//tensorflow:internal"])
-
-licenses(["notice"])  # Apache 2.0
-
-exports_files(["LICENSE"])
-
 load("//tensorflow:tensorflow.bzl", "cuda_py_tests")
 load("//tensorflow:tensorflow.bzl", "py_test")  # @unused
+
+package(
+    default_visibility = ["//tensorflow:internal"],
+    licenses = ["notice"],  # Apache 2.0
+)
+
+exports_files(["LICENSE"])
 
 py_library(
     name = "test_util",
@@ -26,7 +27,6 @@ cuda_py_tests(
         "//third_party/py/numpy",
         "//tensorflow/python:client_testlib",
         "//tensorflow/python:framework_for_generated_wrappers",
-        "//tensorflow/python:spectral_ops_test_util",
         "//tensorflow/python/ops/signal",
     ],
     tags = ["no_rocm"],
@@ -42,7 +42,6 @@ cuda_py_tests(
         "//tensorflow/python:client_testlib",
         "//tensorflow/python:framework_for_generated_wrappers",
         "//tensorflow/python:math_ops",
-        "//tensorflow/python:spectral_ops_test_util",
         "//tensorflow/python/ops/signal",
     ],
     shard_count = 4,
@@ -75,7 +74,6 @@ cuda_py_tests(
         "//tensorflow/python:framework_for_generated_wrappers",
         "//tensorflow/python:framework_test_lib",
         "//tensorflow/python/ops/signal",
-        "//tensorflow/python:spectral_ops_test_util",
     ],
     tags = ["no_rocm"],
     xla_enable_strict_auto_jit = True,
@@ -132,7 +130,6 @@ cuda_py_tests(
         "//tensorflow/python:framework_for_generated_wrappers",
         "//tensorflow/python:framework_test_lib",
         "//tensorflow/python:platform_test",
-        "//tensorflow/python:spectral_ops_test_util",
         "//tensorflow/python/ops/signal",
     ],
     tags = [

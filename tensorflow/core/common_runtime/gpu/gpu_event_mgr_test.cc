@@ -28,7 +28,6 @@ limitations under the License.
 #include "tensorflow/core/graph/node_builder.h"
 #include "tensorflow/core/lib/core/notification.h"
 #include "tensorflow/core/lib/core/status_test_util.h"
-#include "tensorflow/core/lib/gtl/stl_util.h"
 #include "tensorflow/core/platform/stream_executor.h"
 #include "tensorflow/core/platform/test.h"
 #include "tensorflow/core/platform/test_benchmark.h"
@@ -36,6 +35,13 @@ limitations under the License.
 #include "tensorflow/core/public/version.h"
 
 namespace tensorflow {
+
+// Subclass EventMgr to access its private constructor.
+class TEST_EventMgr : public EventMgr {
+ public:
+  TEST_EventMgr(se::StreamExecutor* se, const GPUOptions& gpu_options)
+      : EventMgr(se, gpu_options) {}
+};
 
 class TEST_EventMgrHelper {
  public:
@@ -109,7 +115,7 @@ namespace {
 
 TEST(EventMgr, Empty) {
   auto stream_exec = GPUMachineManager()->ExecutorForDevice(0).ValueOrDie();
-  EventMgr em(stream_exec, GPUOptions());
+  TEST_EventMgr em(stream_exec, GPUOptions());
   TEST_EventMgrHelper th(&em);
   EXPECT_EQ(0, th.queue_size());
   EXPECT_EQ(0, th.free_size());
@@ -126,7 +132,7 @@ static void AddTensorReference(TensorReferenceVector* v, int64 size) {
 // the max simultaneously pending, we should not allocate any more.
 TEST(EventMgr, DelayedPolling) {
   auto stream_exec = GPUMachineManager()->ExecutorForDevice(0).ValueOrDie();
-  EventMgr em(stream_exec, GPUOptions());
+  TEST_EventMgr em(stream_exec, GPUOptions());
   TEST_EventMgrHelper th(&em);
   EXPECT_EQ(0, th.queue_size());
   TensorReferenceVector* v = nullptr;
@@ -159,7 +165,7 @@ TEST(EventMgr, DelayedPolling) {
 
 TEST(EventMgr, FlushLargeTensorImmediately) {
   auto stream_exec = GPUMachineManager()->ExecutorForDevice(0).ValueOrDie();
-  EventMgr em(stream_exec, GPUOptions());
+  TEST_EventMgr em(stream_exec, GPUOptions());
   TEST_EventMgrHelper th(&em);
   EXPECT_EQ(0, live_tensor_bytes);
   std::unique_ptr<se::Stream> stream(new se::Stream(stream_exec));
@@ -176,7 +182,7 @@ TEST(EventMgr, FlushLargeTensorImmediately) {
 
 TEST(EventMgr, ManySmallTensorsFlushedImmediately) {
   auto stream_exec = GPUMachineManager()->ExecutorForDevice(0).ValueOrDie();
-  EventMgr em(stream_exec, GPUOptions());
+  TEST_EventMgr em(stream_exec, GPUOptions());
   TEST_EventMgrHelper th(&em);
   EXPECT_EQ(0, live_tensor_bytes);
   std::unique_ptr<se::Stream> stream(new se::Stream(stream_exec));
@@ -195,7 +201,7 @@ TEST(EventMgr, ManySmallTensorsFlushedImmediately) {
 
 TEST(EventMgr, StreamSwitchingFlushesImmediately) {
   auto stream_exec = GPUMachineManager()->ExecutorForDevice(0).ValueOrDie();
-  EventMgr em(stream_exec, GPUOptions());
+  TEST_EventMgr em(stream_exec, GPUOptions());
   TEST_EventMgrHelper th(&em);
   EXPECT_EQ(0, live_tensor_bytes);
   std::unique_ptr<se::Stream> stream1(new se::Stream(stream_exec));
@@ -217,7 +223,7 @@ TEST(EventMgr, StreamSwitchingFlushesImmediately) {
 
 TEST(EventMgr, ManySmallTensorsSeparateCallsFlushed) {
   auto stream_exec = GPUMachineManager()->ExecutorForDevice(0).ValueOrDie();
-  EventMgr em(stream_exec, GPUOptions());
+  TEST_EventMgr em(stream_exec, GPUOptions());
   TEST_EventMgrHelper th(&em);
   EXPECT_EQ(0, live_tensor_bytes);
   std::unique_ptr<se::Stream> stream(new se::Stream(stream_exec));
@@ -239,7 +245,7 @@ TEST(EventMgr, ManySmallTensorsSeparateCallsFlushed) {
 // down gracefully.
 TEST(EventMgr, NonEmptyShutdown) {
   auto stream_exec = GPUMachineManager()->ExecutorForDevice(0).ValueOrDie();
-  EventMgr em(stream_exec, GPUOptions());
+  TEST_EventMgr em(stream_exec, GPUOptions());
   TEST_EventMgrHelper th(&em);
   EXPECT_EQ(0, th.queue_size());
   EXPECT_EQ(0, th.free_size());
@@ -258,7 +264,7 @@ TEST(EventMgr, NonEmptyShutdown) {
 // Tests that WarnIfInCallback() triggers correctly.
 TEST(EventMgr, WarnIfInCallback) {
   auto stream_exec = GPUMachineManager()->ExecutorForDevice(0).ValueOrDie();
-  EventMgr em(stream_exec, GPUOptions());
+  TEST_EventMgr em(stream_exec, GPUOptions());
   TEST_EventMgrHelper th(&em);
   std::unique_ptr<se::Stream> stream(new se::Stream(stream_exec));
   CHECK(stream);
@@ -299,7 +305,7 @@ class GPUDeviceTestHelper {
   se::Stream* h2d_stream() { return gpu_->streams_[0]->host_to_device; }
   se::Stream* d2h_stream() { return gpu_->streams_[0]->device_to_host; }
   se::Stream* d2d_stream() { return gpu_->streams_[0]->device_to_device[0]; }
-  EventMgr* event_mgr() { return gpu_->em_.get(); }
+  EventMgr* event_mgr() { return gpu_->em_; }
   int pending_cap() { return gpu_->pending_cap_; }
 
  private:
@@ -410,7 +416,7 @@ class EMBenchmarkHelper {
       attr.set_on_host(on_host);
       attrs->push_back(attr);
     }
-    params->output_attr_array = gtl::vector_as_array(attrs);
+    params->output_attr_array = attrs->data();
     params->forward_from_array = {};
   }
 
@@ -585,7 +591,7 @@ static void BM_no_ops(int iters, int threads) {
   std::unique_ptr<se::Stream> stream(new se::Stream(stream_exec));
   CHECK(stream);
   stream->Init();
-  EventMgr em(stream_exec, GPUOptions());
+  TEST_EventMgr em(stream_exec, GPUOptions());
   testing::StartTiming();
   std::atomic<int> counter;
   counter.store(0, std::memory_order_seq_cst);

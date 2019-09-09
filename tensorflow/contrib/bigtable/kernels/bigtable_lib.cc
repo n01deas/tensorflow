@@ -67,13 +67,13 @@ Status GcpStatusToTfStatus(const ::google::cloud::Status& status) {
       strings::StrCat("Error reading from Cloud Bigtable: ", status.message()));
 }
 
-string RegexFromStringSet(const std::vector<string>& strs) {
+string RegexFromStringSet(const std::vector<tstring>& strs) {
   CHECK(!strs.empty()) << "The list of strings to turn into a regex was empty.";
-  std::unordered_set<string> uniq(strs.begin(), strs.end());
+  std::unordered_set<tstring> uniq(strs.begin(), strs.end());
   if (uniq.size() == 1) {
     return *uniq.begin();
   }
-  return str_util::Join(uniq, "|");
+  return absl::StrJoin(uniq, "|");
 }
 
 }  // namespace tensorflow

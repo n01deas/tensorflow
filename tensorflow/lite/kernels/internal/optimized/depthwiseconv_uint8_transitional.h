@@ -24,8 +24,8 @@ limitations under the License.
 
 #include <algorithm>
 
-#include "tensorflow/lite/kernels/internal/common.h"
 #include "tensorflow/lite/kernels/internal/compatibility.h"
+#include "tensorflow/lite/kernels/internal/optimized/cpu_check.h"
 #include "tensorflow/lite/kernels/internal/optimized/depthwiseconv_uint8.h"
 #include "tensorflow/lite/kernels/internal/optimized/depthwiseconv_uint8_3x3_filter.h"
 #include "tensorflow/lite/kernels/internal/reference/depthwiseconv_uint8.h"
@@ -2054,10 +2054,9 @@ struct PackMacroBlock<DepthwiseConvImplementation::kUseIntrinsics3x3DotProduct,
       TFLITE_DCHECK_EQ(start_width, 1);
       TFLITE_DCHECK(leading_width_padding);
       TFLITE_DCHECK(trailing_width_padding);
-      // ASM should use MOVI 64-bit set.
-      padding_mask = vcreate_u64(~0xffffff00L);
 
       for (int k_height = 0; k_height < copy_block_height; ++k_height) {
+        half_work_reg = vdup_n_u8(-input_offset);
         half_work_reg = vld1_lane_s8(reinterpret_cast<const int8*>(
                                          input_block_data + input_block_offset),
                                      half_work_reg, 1);
@@ -2069,8 +2068,6 @@ struct PackMacroBlock<DepthwiseConvImplementation::kUseIntrinsics3x3DotProduct,
             vld1_lane_s8(reinterpret_cast<const int8*>(input_block_data +
                                                        input_block_offset + 2),
                          half_work_reg, 3);
-        half_work_reg =
-            vbsl_s8(padding_mask, vget_low_s8(padding_reg), half_work_reg);
 
         half_work_reg = veor_s8(half_work_reg, vget_low_s8(sign_bit));
         TFLITE_DCHECK_EQ(scratch_data_offset % 8, 0);

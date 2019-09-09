@@ -36,7 +36,8 @@ using ConfigMap =
     std::map<string, tensorflow::RewriterConfig_CustomGraphOptimizer>;
 
 // tf.data optimizations, in the order we want to perform them.
-constexpr std::array<const char*, 14> kTFDataOptimizations = {
+constexpr std::array<const char*, 16> kTFDataOptimizations = {
+    "make_stateless",
     "noop_elimination",
     "shuffle_and_repeat_fusion",
     "map_fusion",
@@ -50,7 +51,8 @@ constexpr std::array<const char*, 14> kTFDataOptimizations = {
     "latency_all_edges",
     "make_sloppy",
     "parallel_batch",
-    "slack"};
+    "slack",
+    "inject_prefetch"};
 
 // Standard grappler optimizations, in the order we want to perform them.
 constexpr std::array<const char*, 5> kGrapplerOptimizations = {
@@ -132,10 +134,18 @@ Status TFDataMetaOptimizer::ApplyOptimization(const string& name,
 
   GraphDef result;
   (*optimizer)->set_deadline_usec(this->deadline_usec());
-  TF_RETURN_IF_ERROR((*optimizer)->Optimize(cluster, *item, &result));
-  item->graph.Swap(&result);
+  Status status = (*optimizer)->Optimize(cluster, *item, &result);
+  if (status.ok()) {
+    // The optimizer succeeded and wrote the optimized graph to result.
+    item->graph.Swap(&result);
+  } else if (errors::IsAborted(status)) {
+    // A status of errors::Aborted just means that the optimizer was a no-op and
+    // did not populate result. Swallow the error status and leave the original
+    // graph in item.
+    status = Status::OK();
+  }
 
-  return Status::OK();
+  return status;
 }
 
 Status TFDataMetaOptimizer::Init(

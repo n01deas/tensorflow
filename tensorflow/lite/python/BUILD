@@ -1,8 +1,9 @@
-licenses(["notice"])  # Apache 2.0
-
-package(default_visibility = ["//tensorflow:internal"])
-
 load("//tensorflow:tensorflow.bzl", "py_test")
+
+package(
+    default_visibility = ["//tensorflow:internal"],
+    licenses = ["notice"],  # Apache 2.0
+)
 
 py_library(
     name = "interpreter",
@@ -20,13 +21,44 @@ py_library(
 py_test(
     name = "interpreter_test",
     srcs = ["interpreter_test.py"],
-    data = ["//tensorflow/lite/python/testdata:interpreter_test_data"],
+    data = [
+        "//tensorflow/lite/python/testdata:interpreter_test_data",
+        "//tensorflow/lite/python/testdata:test_delegate.so",
+    ],
     srcs_version = "PY2AND3",
     tags = [
         "no_windows",
+        "noasan",  # TODO(b/137568139): enable after this is fixed.
+        "nomsan",  # TODO(b/137568139): enable after this is fixed.
     ],
     deps = [
         ":interpreter",
+        "//tensorflow/lite/python/testdata:test_registerer_wrapper",
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:framework_test_lib",
+        "//tensorflow/python:platform",
+        "//third_party/py/numpy",
+    ],
+)
+
+py_test(
+    name = "interpreter_test_py3",
+    srcs = ["interpreter_test.py"],
+    data = [
+        "//tensorflow/lite/python/testdata:interpreter_test_data",
+        "//tensorflow/lite/python/testdata:test_delegate.so",
+    ],
+    main = "interpreter_test.py",
+    python_version = "PY3",
+    srcs_version = "PY2AND3",
+    tags = [
+        "no_windows",
+        "noasan",  # TODO(b/137568139): enable after this is fixed.
+        "nomsan",  # TODO(b/137568139): enable after this is fixed.
+    ],
+    deps = [
+        ":interpreter",
+        "//tensorflow/lite/python/testdata:test_registerer_wrapper",
         "//tensorflow/python:client_testlib",
         "//tensorflow/python:framework_test_lib",
         "//tensorflow/python:platform",
@@ -37,6 +69,7 @@ py_test(
 py_binary(
     name = "tflite_convert",
     srcs = ["tflite_convert.py"],
+    python_version = "PY2",
     srcs_version = "PY2AND3",
     visibility = ["//visibility:public"],
     deps = [":tflite_convert_main_lib"],
@@ -73,6 +106,7 @@ py_library(
         ":op_hint",
         ":util",
         "//tensorflow/lite/experimental/examples/lstm:tflite_lstm_ops",
+        "//tensorflow/lite/experimental/microfrontend:audio_microfrontend_py",
         "//tensorflow/lite/experimental/tensorboard:ops_util",
         "//tensorflow/lite/python/optimize:calibrator",
         "//tensorflow/python:graph_util",
@@ -128,6 +162,20 @@ py_test(
     ],
 )
 
+py_test(
+    name = "lite_mlir_test",
+    srcs = ["lite_mlir_test.py"],
+    srcs_version = "PY2AND3",
+    tags = [
+        "no_windows",
+    ],
+    deps = [
+        ":lite",
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:framework_test_lib",
+    ],
+)
+
 py_library(
     name = "util",
     srcs = ["util.py"],
@@ -139,6 +187,7 @@ py_library(
         ":lite_constants",
         ":op_hint",
         "//tensorflow/python:tf_optimizer",
+        "//tensorflow/python/eager:wrap_function",
     ],
 )
 
@@ -162,7 +211,7 @@ py_library(
         "wrap_toco.py",
     ],
     deps = [
-        "//tensorflow/lite/toco/python:tensorflow_wrap_toco",
+        "//tensorflow/python:pywrap_tensorflow",
         "//tensorflow/python:util",
     ],
 )
@@ -256,18 +305,5 @@ py_test(
         "//tensorflow/python/keras",
         "//tensorflow/python/ops/losses",
         "//tensorflow/python/saved_model",
-    ],
-)
-
-py_binary(
-    name = "create_custom_op",
-    srcs = ["create_custom_op.py"],
-    srcs_version = "PY2AND3",
-    visibility = ["//visibility:public"],
-    deps = [
-        "//tensorflow/contrib/framework:framework_py",
-        "//tensorflow/core:protos_all_py",
-        "//tensorflow/python:platform",
-        "@absl_py//absl/flags",
     ],
 )

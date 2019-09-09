@@ -1,8 +1,9 @@
-package(default_visibility = ["//visibility:public"])
-
-licenses(["notice"])  # Apache 2.0
-
 load("//tensorflow/lite:build_def.bzl", "tflite_copts")
+
+package(
+    default_visibility = ["//visibility:public"],
+    licenses = ["notice"],  # Apache 2.0
+)
 
 common_copts = [
     "-Wall",
@@ -79,6 +80,7 @@ cc_test(
     copts = common_copts,
     deps = [
         ":profile_summarizer",
+        ":profiler",
         "//tensorflow/lite:framework",
         "//tensorflow/lite:schema_fbs_version",
         "//tensorflow/lite/kernels:kernel_util",

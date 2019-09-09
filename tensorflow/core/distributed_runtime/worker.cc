@@ -28,10 +28,16 @@ limitations under the License.
 
 namespace tensorflow {
 
-Worker::Worker(WorkerEnv* env) : env_(env), recent_request_ids_(100000) {}
+Worker::Worker(WorkerEnv* env) : env_(env), recent_request_ids_(100000) {
+  // Enable log history collection in StatusGroup so that recent warning and
+  // error log messages will be attached to the root error status to be
+  // forwarded to the master.
+  StatusGroup::ConfigureLogHistory();
+}
 
 void Worker::GetStatusAsync(const GetStatusRequest* request,
-                            GetStatusResponse* response, StatusCallback done) {
+                            GetStatusResponse* response, bool fail_fast,
+                            StatusCallback done) {
   DeviceMgr* dm = env_->device_mgr;
   std::vector<DeviceAttributes> devices;
   dm->ListDeviceAttributes(&devices);
@@ -45,9 +51,9 @@ void Worker::GetStatusAsync(const GetStatusRequest* request,
 void Worker::CreateWorkerSessionAsync(const CreateWorkerSessionRequest* request,
                                       CreateWorkerSessionResponse* response,
                                       StatusCallback done) {
-  Status s = env_->session_mgr->CreateSession(request->session_handle(),
-                                              request->server_def(),
-                                              request->isolate_session_state());
+  Status s = env_->session_mgr->CreateSession(
+      request->session_handle(), request->server_def(),
+      request->cluster_device_attributes(), request->isolate_session_state());
   done(s);
 }
 
@@ -72,7 +78,7 @@ void Worker::RegisterGraphAsync(const RegisterGraphRequest* request,
   }
   if (s.ok()) {
     s = session->graph_mgr->Register(
-        request->session_handle(), request->graph_def(),
+        request->session_handle(), request->graph_def(), session.get(),
         request->graph_options(), request->debug_options(),
         request->collective_graph_key(), session->cluster_flr.get(),
         response->mutable_graph_handle());
@@ -191,8 +197,7 @@ void Worker::DoRunGraph(CallOptions* opts, RunGraphRequestWrapper* request,
   ProfilerSession* profiler_session = nullptr;
   if (collector && request->exec_opts().record_timeline()) {
     // If timeline was requested, assume we want hardware level tracing.
-    profiler_session =
-        ProfilerSession::Create(/*ProfilerContext*/ nullptr).release();
+    profiler_session = ProfilerSession::Create().release();
   }
   CancellationManager* cm = new CancellationManager;
   opts->SetCancelCallback([this, cm, step_id]() {
